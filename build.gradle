@@ -1,0 +1,57 @@
+plugins {
+    id 'org.springframework.boot' version '2.1.7.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'org.asciidoctor.convert' version '1.5.8'
+    id 'java'
+}
+
+group = 'com.apress.todo'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+configurations {
+    developmentOnly
+    runtimeClasspath {
+        extendsFrom developmentOnly
+    }
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('snippetsDir', file("build/generated-snippets"))
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+    implementation 'org.springframework.boot:spring-boot-starter-mustache'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    // https://mvnrepository.com/artifact/org.webjars/bootstrap
+    compile group: 'org.webjars', name: 'bootstrap', version: '4.3.1'
+    // https://mvnrepository.com/artifact/org.webjars/jquery
+    compile group: 'org.webjars', name: 'jquery', version: '3.4.1'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'mysql:mysql-connector-java'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+}
+
+test {
+    outputs.dir snippetsDir
+}
+
+asciidoctor {
+    inputs.dir snippetsDir
+    dependsOn test
+}
