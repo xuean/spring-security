@@ -3,44 +3,112 @@ package com.apress.todo.config;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-@Configuration
-public class ToDoSecurityConfig extends WebSecurityConfigurerAdapter {
-  @Override
-  protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+@EnableWebSecurity
+//https://docs.spring.io/spring-security/site/docs/4.2.x/reference/htmlsingle/#multiple-httpsecurity
+/**
+ * WebSecurityConfigurerAdapter. Extending this class is one way to override security because it allows you to override
+ * the methods that you really need. In this case, the code overrides the configure(AuthenticationManagerBuilder) signature.
+ **/
+public class ToDoSecurityConfig {
+ // @Override
+  /**
+   * AuthenticationManagerBuilder. This class creates an AuthenticationManager that allows you to easily build in memory,
+   * LDAP, JDBC authentications, UserDetailsService and add AutheticationProviders. In this case, you are building
+   * an in-memory authentication. It’s necessary to add a PasswordEncoder
+   *
+   * If there is no PasswordEncoder you might need to use "{noop}password")
+   */
+  /*protected void configure(AuthenticationManagerBuilder auth) throws Exception {
     auth.inMemoryAuthentication()
         .passwordEncoder(passwordEncoder())
         .withUser("apress")
         .password(passwordEncoder().encode("springboot2"))
         .roles("ADMIN","USER");
+  }*/
+
+  @Bean
+  public UserDetailsService userDetailsService() throws Exception {
+    InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager();
+    manager.createUser(User.withUsername("apress").password(passwordEncoder().encode("springboot2")).roles("USER","ADMIN").build());
+    manager.createUser(User.withUsername("admin").password(passwordEncoder().encode("password")).roles("USER","ADMIN").build());
+    return manager;
   }
 
   @Bean
+  /**
+   * BCryptPasswordEncoder. In this code you are using the BCryptPasswordEncoder (returns a PasswordEncoder implementation)
+   * that uses the BCrypt strong hashing function. You can use also Pbkdf2PasswordEncoder (uses PBKDF2 with a configurable
+   * number of iterations and a random 8-byte random salt value), or SCryptPasswordEncoder (uses the SCrypt hashing function).
+   * Even better, use DelegatingPasswordEncoder, which supports password upgrades.
+   */
   public BCryptPasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
 
-  @Override
-  protected void configure(HttpSecurity http) throws Exception {
+  //@Override
+  /**
+   * Spring Security allows you to override the default login page in several ways. One way is to configure HttpSecurity.
+   * By default, it is applied to all requests, but can be restricted using requestMatcher(RequestMatcher) or similar methods
+   * curl localhost:8080/api/toDos -u apress:springboot2
+   */
+  /*protected void configure(HttpSecurity http) throws Exception {
     http
         .authorizeRequests()
-        .requestMatchers(
+        .requestMatchers(//point to common locations, such as the static resources (static/* ). This is where CSS, JS, or any other simple HTML can live and doesn’t need any security
             PathRequest
                 .toStaticResources()
                 .atCommonLocations()).permitAll()
-        .anyRequest().fullyAuthenticated()
+        .anyRequest().fullyAuthenticated()//uses anyRequest, which should be fullyAuthenticated this means that the /api/*
         .and()
         .formLogin().loginPage("/login").permitAll()
         .and()
         .logout()
         .logoutRequestMatcher( new AntPathRequestMatcher("/logout"))
-        .logoutSuccessUrl("/login")
-        .and()
-        .httpBasic();;
+        .logoutSuccessUrl("/login");
+       *//* .and()
+        .httpBasic();*//*
+  }*/
+  @Configuration
+  @Order(1)
+  public static class ApiWebSecurityConfigurationAdapter extends WebSecurityConfigurerAdapter {
+    protected void configure(HttpSecurity http) throws Exception {
+      http
+          .antMatcher("/api/**")
+          .authorizeRequests()
+          .anyRequest().hasRole("ADMIN")
+          .and()
+          .httpBasic();
+    }
+  }
+
+  @Configuration
+  public static class FormLoginWebSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+      http
+          .authorizeRequests()
+          .requestMatchers(//point to common locations, such as the static resources (static/* ). This is where CSS, JS, or any other simple HTML can live and doesn’t need any security
+              PathRequest
+                  .toStaticResources()
+                  .atCommonLocations()).permitAll()
+          .anyRequest().fullyAuthenticated()//uses anyRequest, which should be fullyAuthenticated this means that the /api/*
+          .and()
+          .formLogin().loginPage("/login").permitAll()
+          .and()
+          .logout()
+          .logoutRequestMatcher( new AntPathRequestMatcher("/logout"))
+          .logoutSuccessUrl("/login");
+    }
   }
 }
